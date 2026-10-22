@@ -1,4 +1,4 @@
-package servidor;
+package Servidor;
 
 import java.io.DataInputStream;
 import java.io.EOFException;
