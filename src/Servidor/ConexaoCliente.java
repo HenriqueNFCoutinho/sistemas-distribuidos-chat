@@ -23,6 +23,7 @@ public class ConexaoCliente implements Runnable {
 
     private List<Pergunta> perguntas;
     private int perguntaAtual;
+    private String temaAtual;
     private int acertos;
 
     public ConexaoCliente(Socket socket, Servidor servidor) {
@@ -135,6 +136,9 @@ public class ConexaoCliente implements Runnable {
                 menu + "\nDigite /cancelar para voltar ao chat."
             );
 
+        } else if (mensagem.trim().equalsIgnoreCase("/podio")) {
+            enviarMensagem(servidor.getPlacar().podio());
+
         } else if (mensagem.isBlank()) {
             enviarMensagem("Digite uma mensagem.");
 
@@ -158,6 +162,7 @@ public class ConexaoCliente implements Runnable {
 
             if (opcao >= 1 && opcao <= temas.size()) {
                 String tema = temas.get(opcao - 1);
+                temaAtual = tema;
 
                 perguntas = BancoDePerguntas.perguntasDo(tema);
                 perguntaAtual = 0;
@@ -179,40 +184,51 @@ public class ConexaoCliente implements Runnable {
     }
 
     private void responder(String resposta) {
-        Pergunta pergunta = perguntas.get(perguntaAtual);
-        int indice = pergunta.interpretarResposta(resposta);
+    Pergunta pergunta = perguntas.get(perguntaAtual);
+    int indice = pergunta.interpretarResposta(resposta);
 
-        if (indice < 0) {
-            enviarMensagem(
-                "Resposta inválida. Digite uma alternativa ou /cancelar."
-            );
-            return;
-        }
-
-        if (pergunta.estaCorreta(indice)) {
-            acertos++;
-            enviarMensagem("Correto!");
-        } else {
-            enviarMensagem(
-                "Errado! Resposta certa: "
-                + pergunta.respostaCorreta()
-            );
-        }
-
-        perguntaAtual++;
-
-        if (perguntaAtual < perguntas.size()) {
-            enviarPergunta();
-        } else {
-            enviarMensagem(
-                "Fim do quiz! Você acertou " + acertos
-                + " de " + perguntas.size()
-                + ". Você voltou ao chat."
-            );
-
-            voltarAoChat();
-        }
+    if (indice < 0) {
+        enviarMensagem(
+            "Resposta inválida. Digite uma alternativa ou /cancelar."
+        );
+        return;
     }
+
+    if (pergunta.estaCorreta(indice)) {
+        acertos++;
+        enviarMensagem("Correto!");
+    } else {
+        enviarMensagem(
+            "Errado! Resposta certa: " + pergunta.respostaCorreta()
+        );
+    }
+
+    perguntaAtual++;
+
+    if (perguntaAtual < perguntas.size()) {
+        enviarPergunta();
+    } else {
+        // Só registra depois da última resposta válida.
+        boolean melhorou = servidor.getPlacar().registrar(
+            nome, temaAtual, acertos, perguntas.size()
+        );
+
+        enviarMensagem(
+            "Fim do quiz! Você acertou " + acertos
+            + " de " + perguntas.size()
+            + ". Você voltou ao chat."
+        );
+
+        enviarMensagem(
+            melhorou
+                ? "Seu melhor resultado foi registrado!"
+                : "Seu resultado anterior foi mantido."
+        );
+
+        enviarMensagem(servidor.getPlacar().podio());
+        voltarAoChat();
+    }
+}
 
     private void enviarPergunta() {
         Pergunta pergunta = perguntas.get(perguntaAtual);
@@ -224,6 +240,7 @@ public class ConexaoCliente implements Runnable {
     }
 
     private void voltarAoChat() {
+        temaAtual = null;
         perguntas = null;
         perguntaAtual = 0;
         acertos = 0;

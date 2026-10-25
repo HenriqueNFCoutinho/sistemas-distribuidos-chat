@@ -10,12 +10,18 @@ public class Servidor {
 
     public static final int PORTA = 3000;
 
+    private final Placar placar = new Placar();
+
+    public Placar getPlacar() {
+        return placar;
+}
     private final List<ConexaoCliente> clientes =
         new CopyOnWriteArrayList<>();
 
     public void iniciar() {
         try (ServerSocket servidor = new ServerSocket(PORTA)) {
             System.out.println("Servidor iniciado na porta " + PORTA);
+            
 
             while (true) {
                 Socket socket = servidor.accept();
