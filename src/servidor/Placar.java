@@ -11,24 +11,21 @@ public class Placar {
 
     private static class Resultado {
         final String nome;
-        final String tema;
         final int acertos;
         final int total;
         final long ordem;
 
-        Resultado(
-            String nome, String tema,
-            int acertos, int total, long ordem
-        ) {
+        Resultado(String nome, int acertos, int total, long ordem) {
             this.nome = nome;
-            this.tema = tema;
             this.acertos = acertos;
             this.total = total;
             this.ordem = ordem;
         }
     }
 
-    private final Map<String, Resultado> melhores = new HashMap<>();
+    private final Map<String, Map<String, Resultado>> resultados =
+        new HashMap<>();
+
     private long proximaOrdem;
 
     public synchronized boolean registrar(
@@ -40,33 +37,40 @@ public class Placar {
             throw new IllegalArgumentException("Resultado inválido.");
         }
 
-        String chave = nome.trim().toLowerCase(Locale.ROOT);
-        Resultado anterior = melhores.get(chave);
+        Map<String, Resultado> jogadores =
+            resultados.computeIfAbsent(
+                tema, chave -> new HashMap<>()
+            );
 
-        // Uma pontuação igual ou inferior não substitui a anterior.
+        String chaveNome = nome.trim().toLowerCase(Locale.ROOT);
+        Resultado anterior = jogadores.get(chaveNome);
+
         if (anterior != null
             && (long) acertos * anterior.total
                 <= (long) anterior.acertos * total) {
             return false;
         }
 
-        melhores.put(
-            chave,
+        jogadores.put(
+            chaveNome,
             new Resultado(
-                nome.trim(), tema, acertos, total, proximaOrdem++
+                nome.trim(), acertos, total, proximaOrdem++
             )
         );
 
         return true;
     }
 
-    public synchronized String podio() {
-        if (melhores.isEmpty()) {
-            return "Nenhum quiz foi concluído ainda.";
+    public synchronized String podio(String tema) {
+        Map<String, Resultado> jogadores = resultados.get(tema);
+
+        if (jogadores == null || jogadores.isEmpty()) {
+            return "PÓDIO — " + tema
+                + "\nNenhum quiz concluído neste tema.";
         }
 
         List<Resultado> ordenados =
-            new ArrayList<>(melhores.values());
+            new ArrayList<>(jogadores.values());
 
         Comparator<Resultado> comparador = (a, b) ->
             Long.compare(
@@ -78,8 +82,9 @@ public class Placar {
             comparador.thenComparingLong(resultado -> resultado.ordem)
         );
 
-        StringBuilder texto =
-            new StringBuilder("========== PÓDIO ==========\n");
+        StringBuilder texto = new StringBuilder(
+            "========== PÓDIO — " + tema + " ==========\n"
+        );
 
         for (int i = 0; i < Math.min(3, ordenados.size()); i++) {
             Resultado resultado = ordenados.get(i);
@@ -88,13 +93,22 @@ public class Placar {
                 .append(resultado.nome)
                 .append(" - ").append(resultado.acertos)
                 .append("/").append(resultado.total)
-                .append(" - ").append(resultado.tema)
                 .append("\n");
         }
 
         texto.append(
             "Desempate: quem alcançou o resultado primeiro."
         );
+
+        return texto.toString();
+    }
+
+    public synchronized String podio() {
+        StringBuilder texto = new StringBuilder();
+
+        for (String tema : BancoDePerguntas.temas()) {
+            texto.append(podio(tema)).append("\n\n");
+        }
 
         return texto.toString();
     }

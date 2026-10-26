@@ -62,6 +62,7 @@ public class Cliente {
 
             try {
                 while (!encerrando.get()) {
+                    System.out.println();
                     System.out.println(entrada.readUTF());
                 }
             } catch (IOException erro) {
