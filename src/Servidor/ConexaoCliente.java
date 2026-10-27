@@ -117,12 +117,13 @@ public void run() {
         estado = Estado.CHAT;
 
         enviarMensagem(
-         "\n========== CHAT GERAL ==========\n"
-         + "Você entrou como: " + nome + "\n"
-         + "Digite uma mensagem e pressione Enter para conversar.\n"
-         + "Comandos: /quiz, /podio, /cancelar e /sair.\n"
-         + "================================"
-);
+            "\n========== CHAT GERAL ==========\n"
+            + "Você entrou como: " + nome + "\n"
+            + "Digite uma mensagem e pressione Enter para conversar.\n"
+            + "Comandos: /quiz, /podio, /ajuda, /cancelar e /sair.\n"
+            + "Digite /ajuda para ver a lista de comandos.\n"
+            + "================================"
+        );
 
         servidor.distribuirMensagem(
             "* " + nome + " entrou no chat.", this
@@ -148,16 +149,18 @@ public void run() {
                 menu + "\nDigite /cancelar para voltar ao chat."
             );
 
-        } else if (mensagem.trim().equalsIgnoreCase("/podio")
-            || mensagem.trim().equalsIgnoreCase("/podia")) {
+        } else if (mensagem.trim().equalsIgnoreCase("/podio")) {
             mostrarMenuPodio();
+
+        } else if (mensagem.trim().equalsIgnoreCase("/ajuda")) {
+            mostrarAjuda();
 
         } else if (mensagem.isBlank()) {
             enviarMensagem("Digite uma mensagem.");
 
         } else if (mensagem.trim().startsWith("/")) {
             enviarMensagem(
-                "Comando desconhecido. Use /quiz, /cancelar ou /sair."
+                "Comando desconhecido. Digite /ajuda para ver os comandos disponíveis."
             );
 
         } else {
@@ -290,6 +293,18 @@ public void run() {
             }
         }
     }
+    private void mostrarAjuda() {
+        enviarMensagem(
+            "========== COMANDOS DISPONÍVEIS ==========\n"
+            + "/ajuda    - mostra esta lista de comandos.\n"
+            + "/quiz     - inicia um quiz e permite escolher um tema.\n"
+            + "/podio    - consulta o pódio de um tema ou de todos.\n"
+            + "/cancelar - cancela o quiz ou a consulta ao pódio em andamento.\n"
+            + "/sair     - encerra sua conexão com o chat.\n"
+            + "=========================================="
+        );
+    }
+
     private void mostrarMenuPodio() {
     estado = Estado.PODIO;
 

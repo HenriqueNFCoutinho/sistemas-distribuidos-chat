@@ -21,7 +21,11 @@ public class BancoDePerguntas {
             new Pergunta("Em qual continente fica o Egito?", 3,
                 "Ásia", "Europa", "Oceania", "África"),
             new Pergunta("Quantos estados tem o Brasil (sem contar o DF)?", 2,
-                "24", "25", "26", "27")
+                "24", "25", "26", "27"),
+            new Pergunta("Qual é a capital do estado da Paraíba?", 1,
+                "Campina Grande", "João Pessoa", "Patos", "Sousa"),
+            new Pergunta("Qual linha imaginária divide a Terra em hemisférios Norte e Sul?", 0,
+                "Linha do Equador", "Trópico de Capricórnio", "Meridiano de Greenwich", "Trópico de Câncer")
         ));
 
         TEMAS.put("História", List.of(
@@ -34,7 +38,11 @@ public class BancoDePerguntas {
             new Pergunta("Qual civilização construiu Machu Picchu?", 3,
                 "Maias", "Astecas", "Olmecas", "Incas"),
             new Pergunta("Em que ano caiu o Muro de Berlim?", 1,
-                "1985", "1989", "1991", "2001")
+                "1985", "1989", "1991", "2001"),
+            new Pergunta("Quem foi o primeiro presidente do Brasil?", 3,
+                "Getúlio Vargas", "Juscelino Kubitschek", "Floriano Peixoto", "Deodoro da Fonseca"),
+            new Pergunta("Qual povo antigo construiu as pirâmides de Gizé?", 2,
+                "Romanos", "Persas", "Egípcios", "Fenícios")
         ));
 
         TEMAS.put("Ciências", List.of(
@@ -47,7 +55,11 @@ public class BancoDePerguntas {
             new Pergunta("Qual é a velocidade aproximada da luz no vácuo?", 3,
                 "300 km/s", "3.000 km/s", "30.000 km/s", "300.000 km/s"),
             new Pergunta("Qual gás as plantas absorvem na fotossíntese?", 1,
-                "Oxigênio", "Gás carbônico", "Nitrogênio", "Hélio")
+                "Oxigênio", "Gás carbônico", "Nitrogênio", "Hélio"),
+            new Pergunta("Qual é o planeta mais próximo do Sol?", 0,
+                "Mercúrio", "Vênus", "Terra", "Marte"),
+            new Pergunta("Qual parte da célula contém a maior parte do material genético?", 2,
+                "Membrana", "Citoplasma", "Núcleo", "Ribossomo")
         ));
 
         TEMAS.put("Programação", List.of(
@@ -61,7 +73,11 @@ public class BancoDePerguntas {
                 "Text Control Protocol", "Transfer Code Process",
                 "Total Connection Port", "Transmission Control Protocol"),
             new Pergunta("Qual palavra-chave Java evita que duas threads executem um método ao mesmo tempo?", 2,
-                "volatile", "static", "synchronized", "final")
+                "volatile", "static", "synchronized", "final"),
+            new Pergunta("Qual método é o ponto de entrada tradicional de um programa Java?", 1,
+                "start()", "main()", "run()", "init()"),
+            new Pergunta("Qual estrutura permite repetir um bloco enquanto uma condição for verdadeira?", 3,
+                "class", "import", "package", "while")
         ));
     }
 
