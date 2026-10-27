@@ -33,6 +33,20 @@ public class Cliente {
                             || encerrando.get()) {
                             break;
                         }
+                        
+                        if (mensagem.length() > 1000) {
+                             System.out.println(
+                                "Mensagem muito longa. Use no máximo 1000 caracteres."
+                            );
+                            continue;
+                        }
+
+                        if (mensagem.length() > 1000) {
+                            System.out.println(
+                                "Mensagem muito longa. Use no máximo 1000 caracteres."
+                            );
+                            continue;
+                        }
 
                         saida.writeUTF(mensagem);
                         saida.flush();

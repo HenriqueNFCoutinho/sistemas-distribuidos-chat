@@ -44,8 +44,17 @@ public void run() {
         enviarMensagem("Digite seu nome:");
 
         while (true) {
+            
             String mensagem = entrada.readUTF();
-            String comando = mensagem.trim();
+
+            if (mensagem.length() > 1000) {
+                enviarMensagem(
+            "Mensagem muito longa. Use no máximo 1000 caracteres."
+                );
+            continue;
+            }
+
+String comando = mensagem.trim();
 
             if (comando.equalsIgnoreCase("/sair")) {
                 break;
@@ -83,7 +92,7 @@ public void run() {
         }
 
     } catch (EOFException erro) {
-        // O cliente encerrou a conexão.
+        System.out.println("Cliente desconectado.");
     } catch (IOException erro) {
         System.out.println(
             "Conexão encerrada: " + erro.getMessage()
@@ -135,8 +144,11 @@ public void run() {
             estado = Estado.TEMA;
 
             List<String> temas = BancoDePerguntas.temas();
-            StringBuilder menu =
-                new StringBuilder("Escolha um tema:");
+            StringBuilder menu = new StringBuilder(
+                 "Durante o quiz, você não receberá as mensagens do chat.\n"
+                + "Elas não serão guardadas para depois.\n\n"
+                + "Escolha um tema:"
+            );
 
             for (int i = 0; i < temas.size(); i++) {
                 menu.append("\n")
@@ -190,7 +202,7 @@ public void run() {
             }
 
         } catch (NumberFormatException erro) {
-            // A escolha precisa ser um número do menu.
+            
         }
 
         enviarMensagem(
@@ -224,7 +236,6 @@ public void run() {
     if (perguntaAtual < perguntas.size()) {
         enviarPergunta();
     } else {
-        // Só registra depois da última resposta válida.
         boolean melhorou = servidor.getPlacar().registrar(
             nome, temaAtual, acertos, perguntas.size()
         );

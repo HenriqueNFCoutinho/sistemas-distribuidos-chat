@@ -17,15 +17,13 @@ javac -version
 
 ## Como compilar no Windows
 
-Abra o CMD na pasta principal do projeto (a pasta que contém `src`) e execute:
+Abra o PowerShell na pasta principal do projeto, que contém a pasta `src`, e execute:
 
-```bat
-dir /s /b src\*.java > fontes.txt
-mkdir out
-javac -encoding UTF-8 -d out @fontes.txt
+```powershell
+javac -encoding UTF-8 -d out src/Main.java src/servidor/*.java src/clientes/*.java
 ```
 
-Se a pasta `out` já existir, o aviso do `mkdir` pode ser ignorado. Para uma compilação limpa, apague a pasta `out` antiga antes de compilar novamente.
+O comando cria a pasta `out`, onde ficam os arquivos compilados.
 
 ## Como executar
 
@@ -82,6 +80,8 @@ Use o IP real do computador servidor. Os computadores precisam ter conectividade
 Comandos devem ser digitados no início da mensagem. Se um comando não for reconhecido, o cliente recebe uma orientação para usar `/ajuda`.
 
 Durante um quiz, responda com a letra da alternativa (A, B, C ou D). Também é possível usar `/cancelar` para desistir do quiz.
+Durante o quiz, o jogador não recebe as mensagens do chat.
+Essas mensagens não são guardadas para depois.
 
 ## Como funciona o placar
 

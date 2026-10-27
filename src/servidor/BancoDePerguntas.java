@@ -16,7 +16,7 @@ public class BancoDePerguntas {
                 "Sydney", "Melbourne", "Canberra", "Perth"),
             new Pergunta("Qual é o maior oceano do planeta?", 0,
                 "Pacífico", "Atlântico", "Índico", "Ártico"),
-            new Pergunta("Qual é o rio mais extenso do Brasil (em território nacional)?", 1,
+            new Pergunta("Qual é o rio mais extenso inteiramente brasileiro?", 0,
                 "São Francisco", "Amazonas", "Paraná", "Tocantins"),
             new Pergunta("Em qual continente fica o Egito?", 3,
                 "Ásia", "Europa", "Oceania", "África"),
@@ -46,7 +46,7 @@ public class BancoDePerguntas {
         ));
 
         TEMAS.put("Ciências", List.of(
-            new Pergunta("Qual é o símbolo químico da água?", 0,
+            new Pergunta("Qual é a fórmula química da água?", 0,
                 "H2O", "CO2", "O2", "NaCl"),
             new Pergunta("Qual planeta é conhecido como Planeta Vermelho?", 2,
                 "Vênus", "Júpiter", "Marte", "Saturno"),
