@@ -6,6 +6,8 @@ import java.io.EOFException;
 import java.io.IOException;
 import java.net.Socket;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public class ConexaoCliente implements Runnable {
 
@@ -17,6 +19,9 @@ public class ConexaoCliente implements Runnable {
     private final Servidor servidor;
 
     private DataOutputStream saida;
+    private final BlockingQueue<String> mensagensPendentes =
+        new ArrayBlockingQueue<>(256);
+    private Thread transmissora;
     private String nome;
 
     private volatile Estado estado = Estado.NOME;
@@ -32,81 +37,103 @@ public class ConexaoCliente implements Runnable {
     }
 
     @Override
-public void run() {
-    try (
-        Socket conexao = socket;
-        DataInputStream entrada =
-            new DataInputStream(conexao.getInputStream());
-        DataOutputStream fluxoSaida =
-            new DataOutputStream(conexao.getOutputStream())
-    ) {
-        saida = fluxoSaida;
-        enviarMensagem("Digite seu nome:");
+    public void run() {
+        try (
+            Socket conexao = socket;
+            DataInputStream entrada =
+                new DataInputStream(conexao.getInputStream());
+            DataOutputStream fluxoSaida =
+                new DataOutputStream(conexao.getOutputStream())
+        ) {
+            saida = fluxoSaida;
 
-        while (true) {
-            
-            String mensagem = entrada.readUTF();
+            transmissora = new Thread(
+                this::transmitirMensagens,
+                "transmissora-cliente"
+            );
+            transmissora.setDaemon(true);
+            transmissora.start();
 
-            if (mensagem.length() > 1000) {
-                enviarMensagem(
-            "Mensagem muito longa. Use no máximo 1000 caracteres."
-                );
-            continue;
-            }
+            enviarMensagem("Digite seu nome:");
 
-String comando = mensagem.trim();
+            while (true) {
+                String mensagem = entrada.readUTF();
 
-            if (comando.equalsIgnoreCase("/sair")) {
-                break;
-            }
+                if (estado == Estado.NOME
+                    && (mensagem.length() > 30
+                    || mensagem.codePoints().anyMatch(Character::isISOControl))) {
 
-            if (comando.equalsIgnoreCase("/cancelar")) {
-                if (estaEmQuiz()) {
-                    voltarAoChat();
                     enviarMensagem(
-                        "Quiz cancelado. Você voltou ao chat."
+                        "Nome inválido. Use até 30 caracteres, "
+                        + "sem quebras de linha ou caracteres de controle."
                     );
-
-                } else if (estado == Estado.PODIO) {
-                    estado = Estado.CHAT;
-                    enviarMensagem(
-                        "Consulta cancelada. Você voltou ao chat."
-                    );
-
-                } else {
-                    enviarMensagem(
-                        "Nenhum quiz ou consulta está em andamento."
-                    );
+                    continue;
                 }
 
-                continue;
+                if (mensagem.length() > 1000) {
+                    enviarMensagem(
+                        "Mensagem muito longa. Use no máximo 1000 caracteres."
+                    );
+                    continue;
+                }
+
+                String comando = mensagem.trim();
+
+                if (comando.equalsIgnoreCase("/sair")) {
+                    break;
+                }
+
+                if (comando.equalsIgnoreCase("/cancelar")) {
+                    if (estaEmQuiz()) {
+                        voltarAoChat();
+                        enviarMensagem(
+                            "Quiz cancelado. Você voltou ao chat."
+                        );
+                    } else if (estado == Estado.PODIO) {
+                        estado = Estado.CHAT;
+                        enviarMensagem(
+                            "Consulta cancelada. Você voltou ao chat."
+                        );
+                    } else {
+                        enviarMensagem(
+                            "Nenhum quiz ou consulta está em andamento."
+                        );
+                    }
+
+                    continue;
+                }
+
+                switch (estado) {
+                    case NOME -> receberNome(comando);
+                    case CHAT -> tratarChat(mensagem);
+                    case TEMA -> escolherTema(comando);
+                    case RESPOSTA -> responder(comando);
+                    case PODIO -> escolherPodio(comando);
+                }
             }
 
-            switch (estado) {
-                case NOME -> receberNome(comando);
-                case CHAT -> tratarChat(mensagem);
-                case TEMA -> escolherTema(comando);
-                case RESPOSTA -> responder(comando);
-                case PODIO -> escolherPodio(comando);
-            }
-        }
+        } catch (EOFException erro) {
+            System.out.println("Cliente desconectado.");
 
-    } catch (EOFException erro) {
-        System.out.println("Cliente desconectado.");
-    } catch (IOException erro) {
-        System.out.println(
-            "Conexão encerrada: " + erro.getMessage()
-        );
-    } finally {
-        servidor.removerCliente(this);
-
-        if (nome != null) {
-            servidor.distribuirMensagem(
-                "* " + nome + " saiu do chat.", this
+        } catch (IOException erro) {
+            System.out.println(
+                "Conexão encerrada: " + erro.getMessage()
             );
+
+        } finally {
+            if (transmissora != null) {
+                transmissora.interrupt();
+            }
+
+            servidor.removerCliente(this);
+
+            if (nome != null) {
+                servidor.distribuirMensagem(
+                    "* " + nome + " saiu do chat.", this
+                );
+            }
         }
     }
-}
 
     private void receberNome(String tentativa) {
         if (tentativa.isBlank() || tentativa.startsWith("/")) {
@@ -145,7 +172,7 @@ String comando = mensagem.trim();
 
             List<String> temas = BancoDePerguntas.temas();
             StringBuilder menu = new StringBuilder(
-                 "Durante o quiz, você não receberá as mensagens do chat.\n"
+                "Durante o quiz, você não receberá as mensagens do chat.\n"
                 + "Elas não serão guardadas para depois.\n\n"
                 + "Escolha um tema:"
             );
@@ -172,7 +199,8 @@ String comando = mensagem.trim();
 
         } else if (mensagem.trim().startsWith("/")) {
             enviarMensagem(
-                "Comando desconhecido. Digite /ajuda para ver os comandos disponíveis."
+                "Comando desconhecido. Digite /ajuda "
+                + "para ver os comandos disponíveis."
             );
 
         } else {
@@ -202,7 +230,6 @@ String comando = mensagem.trim();
             }
 
         } catch (NumberFormatException erro) {
-            
         }
 
         enviarMensagem(
@@ -212,50 +239,50 @@ String comando = mensagem.trim();
     }
 
     private void responder(String resposta) {
-    Pergunta pergunta = perguntas.get(perguntaAtual);
-    int indice = pergunta.interpretarResposta(resposta);
+        Pergunta pergunta = perguntas.get(perguntaAtual);
+        int indice = pergunta.interpretarResposta(resposta);
 
-    if (indice < 0) {
-        enviarMensagem(
-            "Resposta inválida. Digite uma alternativa ou /cancelar."
-        );
-        return;
+        if (indice < 0) {
+            enviarMensagem(
+                "Resposta inválida. Digite uma alternativa ou /cancelar."
+            );
+            return;
+        }
+
+        if (pergunta.estaCorreta(indice)) {
+            acertos++;
+            enviarMensagem("Correto!");
+        } else {
+            enviarMensagem(
+                "Errado! Resposta certa: " + pergunta.respostaCorreta()
+            );
+        }
+
+        perguntaAtual++;
+
+        if (perguntaAtual < perguntas.size()) {
+            enviarPergunta();
+        } else {
+            boolean melhorou = servidor.getPlacar().registrar(
+                nome, temaAtual, acertos, perguntas.size()
+            );
+
+            enviarMensagem(
+                "Fim do quiz! Você acertou " + acertos
+                + " de " + perguntas.size()
+                + ". Você voltou ao chat."
+            );
+
+            enviarMensagem(
+                melhorou
+                    ? "Seu melhor resultado foi registrado!"
+                    : "Seu resultado anterior foi mantido."
+            );
+
+            enviarMensagem(servidor.getPlacar().podio(temaAtual));
+            voltarAoChat();
+        }
     }
-
-    if (pergunta.estaCorreta(indice)) {
-        acertos++;
-        enviarMensagem("Correto!");
-    } else {
-        enviarMensagem(
-            "Errado! Resposta certa: " + pergunta.respostaCorreta()
-        );
-    }
-
-    perguntaAtual++;
-
-    if (perguntaAtual < perguntas.size()) {
-        enviarPergunta();
-    } else {
-        boolean melhorou = servidor.getPlacar().registrar(
-            nome, temaAtual, acertos, perguntas.size()
-        );
-
-        enviarMensagem(
-            "Fim do quiz! Você acertou " + acertos
-            + " de " + perguntas.size()
-            + ". Você voltou ao chat."
-        );
-
-        enviarMensagem(
-            melhorou
-                ? "Seu melhor resultado foi registrado!"
-                : "Seu resultado anterior foi mantido."
-        );
-
-        enviarMensagem(servidor.getPlacar().podio(temaAtual));
-        voltarAoChat();
-    }
-}
 
     private void enviarPergunta() {
         Pergunta pergunta = perguntas.get(perguntaAtual);
@@ -286,24 +313,41 @@ String comando = mensagem.trim();
         return estado == Estado.TEMA || estado == Estado.RESPOSTA;
     }
 
-    public synchronized void enviarMensagem(String mensagem) {
-        try {
-            saida.writeUTF(mensagem);
-            saida.flush();
-
-        } catch (IOException erro) {
-            servidor.removerCliente(this);
-
-            try {
-                socket.close();
-            } catch (IOException erroFechamento) {
-                System.err.println(
-                    "Erro ao fechar conexão: "
-                    + erroFechamento.getMessage()
-                );
-            }
+    public void enviarMensagem(String mensagem) {
+        if (!mensagensPendentes.offer(mensagem)) {
+            System.out.println(
+                "Cliente desconectado: não está recebendo mensagens."
+            );
+            fecharSocket();
         }
     }
+
+    private void transmitirMensagens() {
+        try {
+            while (!Thread.currentThread().isInterrupted()) {
+                String mensagem = mensagensPendentes.take();
+                saida.writeUTF(mensagem);
+                saida.flush();
+            }
+
+        } catch (InterruptedException erro) {
+            Thread.currentThread().interrupt();
+
+        } catch (IOException erro) {
+            fecharSocket();
+        }
+    }
+
+    private void fecharSocket() {
+        try {
+            socket.close();
+        } catch (IOException erro) {
+            System.err.println(
+                "Erro ao fechar conexão: " + erro.getMessage()
+            );
+        }
+    }
+
     private void mostrarAjuda() {
         enviarMensagem(
             "========== COMANDOS DISPONÍVEIS ==========\n"
@@ -317,58 +361,58 @@ String comando = mensagem.trim();
     }
 
     private void mostrarMenuPodio() {
-    estado = Estado.PODIO;
+        estado = Estado.PODIO;
 
-    List<String> temas = BancoDePerguntas.temas();
+        List<String> temas = BancoDePerguntas.temas();
 
-    StringBuilder menu = new StringBuilder(
-        "Qual pódio você quer ver?\n0) Todos"
-    );
+        StringBuilder menu = new StringBuilder(
+            "Qual pódio você quer ver?\n0) Todos"
+        );
 
-    for (int i = 0; i < temas.size(); i++) {
-        menu.append("\n")
-            .append(i + 1)
-            .append(") ")
-            .append(temas.get(i));
+        for (int i = 0; i < temas.size(); i++) {
+            menu.append("\n")
+                .append(i + 1)
+                .append(") ")
+                .append(temas.get(i));
+        }
+
+        enviarMensagem(
+            menu + "\nDigite o número ou /cancelar."
+        );
     }
 
-    enviarMensagem(
-        menu + "\nDigite o número ou /cancelar."
-    );
-}
+    private void escolherPodio(String escolha) {
+        List<String> temas = BancoDePerguntas.temas();
+        int opcao;
 
-private void escolherPodio(String escolha) {
-    List<String> temas = BancoDePerguntas.temas();
-    int opcao;
+        if (escolha.equalsIgnoreCase("Todos")) {
+            opcao = 0;
+        } else {
+            try {
+                opcao = Integer.parseInt(escolha);
+            } catch (NumberFormatException erro) {
+                enviarMensagem(
+                    "Opção inválida. Digite o número ou /cancelar."
+                );
+                return;
+            }
+        }
 
-    if (escolha.equalsIgnoreCase("Todos")) {
-        opcao = 0;
-    } else {
-        try {
-            opcao = Integer.parseInt(escolha);
-        } catch (NumberFormatException erro) {
+        if (opcao < 0 || opcao > temas.size()) {
             enviarMensagem(
-                "Opção inválida. Digite o número ou /cancelar."
+                "Opção inválida. Digite de 0 a " + temas.size() + "."
             );
             return;
         }
-    }
 
-    if (opcao < 0 || opcao > temas.size()) {
-        enviarMensagem(
-            "Opção inválida. Digite de 0 a " + temas.size() + "."
-        );
-        return;
-    }
+        if (opcao == 0) {
+            enviarMensagem(servidor.getPlacar().podio());
+        } else {
+            String tema = temas.get(opcao - 1);
+            enviarMensagem(servidor.getPlacar().podio(tema));
+        }
 
-    if (opcao == 0) {
-        enviarMensagem(servidor.getPlacar().podio());
-    } else {
-        String tema = temas.get(opcao - 1);
-        enviarMensagem(servidor.getPlacar().podio(tema));
+        estado = Estado.CHAT;
+        enviarMensagem("Você está no chat novamente.");
     }
-
-    estado = Estado.CHAT;
-    enviarMensagem("Você está no chat novamente.");
-}
 }

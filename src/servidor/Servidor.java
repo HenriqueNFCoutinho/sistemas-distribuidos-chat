@@ -5,35 +5,64 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.Semaphore;
 
 public class Servidor {
 
     public static final int PORTA = 3000;
 
+    private static final int MAX_CONEXOES = 50;
+    private final Semaphore vagas = new Semaphore(MAX_CONEXOES);
+
     private final Placar placar = new Placar();
+
+    private final List<ConexaoCliente> clientes =
+        new CopyOnWriteArrayList<>();
 
     public Placar getPlacar() {
         return placar;
-}
-    private final List<ConexaoCliente> clientes =
-        new CopyOnWriteArrayList<>();
+    }
 
     public void iniciar() {
         try (ServerSocket servidor = new ServerSocket(PORTA)) {
             System.out.println("Servidor iniciado na porta " + PORTA);
-            
 
             while (true) {
                 Socket socket = servidor.accept();
 
-                ConexaoCliente cliente =
-                    new ConexaoCliente(socket, this);
+                if (!vagas.tryAcquire()) {
+                    socket.close();
 
-                new Thread(cliente).start();
+                    System.out.println(
+                        "Conexão recusada: limite de clientes atingido."
+                    );
+
+                    continue;
+                }
+
+                try {
+                    ConexaoCliente cliente =
+                        new ConexaoCliente(socket, this);
+
+                    new Thread(() -> {
+                        try {
+                            cliente.run();
+                        } finally {
+                            vagas.release();
+                        }
+                    }, "atendimento-cliente").start();
+
+                } catch (RuntimeException | Error erro) {
+                    vagas.release();
+                    socket.close();
+                    throw erro;
+                }
             }
 
         } catch (IOException erro) {
-            System.err.println("Erro no servidor: " + erro.getMessage());
+            System.err.println(
+                "Erro no servidor: " + erro.getMessage()
+            );
         }
     }
 
